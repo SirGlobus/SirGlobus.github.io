@@ -23,19 +23,22 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            height: 100vh;
+            box-sizing: border-box;
         }
 
         h1 {
             color: #2c3e50;
-            margin-bottom: 20px;
+            margin: 0 0 15px 0;
+            font-size: 24px;
         }
 
         .controls {
             background: white;
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
@@ -50,13 +53,13 @@
         }
 
         label {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
             color: #7f8c8d;
         }
 
         input, select, button {
-            padding: 8px 12px;
+            padding: 6px 10px;
             border: 1px solid #bdc3c7;
             border-radius: 4px;
             font-size: 14px;
@@ -78,18 +81,19 @@
 
         .radio-group {
             display: flex;
-            gap: 10px;
+            gap: 5px;
             background: #edf2f7;
-            padding: 5px;
+            padding: 4px;
             border-radius: 6px;
         }
 
         .radio-group label {
-            padding: 6px 12px;
+            padding: 4px 10px;
             border-radius: 4px;
             cursor: pointer;
             color: #4a5568;
             transition: all 0.2s;
+            font-size: 13px;
         }
 
         .radio-group input {
@@ -101,33 +105,35 @@
             color: white;
         }
 
+        /* Ограничиваем контейнер, чтобы он не растягивал страницу */
         #grid-container {
-            max-width: 90vw;
-            max-height: 70vh;
+            max-width: 95vw;
+            max-height: 65vh;
             overflow: auto;
-            background: white;
-            padding: 10px;
+            background: #e2e8f0;
+            padding: 8px;
             border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .grid {
             display: grid;
             gap: 1px;
             background-color: var(--border-color);
-            border: 1px solid var(--border-color);
         }
 
         .cell {
-            width: 30px;
-            height: 30px;
+            width: 28px;
+            height: 28px;
             background-color: var(--empty-color);
             cursor: pointer;
-            transition: background-color 0.1s ease;
+            transition: background-color 0.05s ease;
             user-select: none;
         }
 
-        /* Стили для типов клеток */
         .cell.wall {
             background-color: var(--wall-color);
         }
@@ -137,14 +143,13 @@
             position: relative;
         }
 
-        /* Иконка лампочки внутри клетки */
         .cell.lamp::after {
             content: "💡";
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 16px;
+            font-size: 14px;
         }
 
         .cell.light {
@@ -159,15 +164,15 @@
     <div class="controls">
         <div class="control-group">
             <label for="grid-rows">Строк:</label>
-            <input type="number" id="grid-rows" value="15" min="5" max="50">
+            <input type="number" id="grid-rows" value="15" min="3" max="60">
         </div>
         <div class="control-group">
             <label for="grid-cols">Колонок:</label>
-            <input type="number" id="grid-cols" value="20" min="5" max="50">
+            <input type="number" id="grid-cols" value="20" min="3" max="60">
         </div>
         <div class="control-group">
-            <label for="lamp-range">Размер (дальность) лампы:</label>
-            <input type="number" id="lamp-range" value="4" min="0" max="100">
+            <label for="lamp-range">Размер лампы (дальность):</label>
+            <input type="number" id="lamp-range" value="5" min="0" max="100">
         </div>
         
         <div class="control-group">
@@ -193,11 +198,10 @@
     </div>
 
     <script>
-        // Состояние приложения
         let rows = 15;
         let cols = 20;
-        let gridData = []; // Матрица типов: 'empty', 'wall', 'lamp'
-        let lampRanges = {}; // Хранилище дальности для каждой лампы по ключу "r,c"
+        let gridData = []; 
+        let lampRanges = {}; 
 
         const gridElement = document.getElementById('grid');
         const rowsInput = document.getElementById('grid-rows');
@@ -206,10 +210,9 @@
         const btnGenerate = document.getElementById('btn-generate');
         const btnClear = document.getElementById('btn-clear');
 
-        // Инициализация
         function init() {
-            rows = parseInt(rowsInput.value) || 15;
-            cols = parseInt(colsInput.value) || 20;
+            rows = Math.max(1, parseInt(rowsInput.value) || 15);
+            cols = Math.max(1, parseInt(colsInput.value) || 20);
             
             gridData = Array(rows).fill(null).map(() => Array(cols).fill('empty'));
             lampRanges = {};
@@ -217,11 +220,10 @@
             renderGrid();
         }
 
-        // Отрисовка сетки в DOM
         function renderGrid() {
             gridElement.innerHTML = '';
-            gridElement.style.gridTemplateRows = `repeat(${rows}, 30px)`;
-            gridElement.style.gridTemplateColumns = `repeat(${cols}, 30px)`;
+            gridElement.style.gridTemplateRows = `repeat(${rows}, 28px)`;
+            gridElement.style.gridTemplateColumns = `repeat(${cols}, 28px)`;
 
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
@@ -230,16 +232,13 @@
                     cell.dataset.row = r;
                     cell.dataset.col = c;
                     
-                    // Навешиваем событие клика
                     cell.addEventListener('click', () => handleCellClick(r, c));
-                    
                     gridElement.appendChild(cell);
                 }
             }
             updateVisuals();
         }
 
-        // Обработка клика по клетке в зависимости от режима
         function handleCellClick(r, c) {
             const currentMode = document.querySelector('input[name="mode"]:checked').value;
 
@@ -264,12 +263,9 @@
             updateVisuals();
         }
 
-        // Обновление классов клеток (свет, стены, лампы)
         function updateVisuals() {
-            // Создаем карту освещения (матрица true/false)
             const lightMap = Array(rows).fill(null).map(() => Array(cols).fill(false));
 
-            // Для каждой лампы запускаем алгоритм поиска в ширину (BFS)
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
                     if (gridData[r][c] === 'lamp') {
@@ -279,14 +275,12 @@
                 }
             }
 
-            // Синхронизируем массив данных с классами в DOM
             const cells = gridElement.children;
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 const r = parseInt(cell.dataset.row);
                 const c = parseInt(cell.dataset.col);
 
-                // Сбрасываем старые классы
                 cell.className = 'cell';
 
                 if (gridData[r][c] === 'wall') {
@@ -299,36 +293,26 @@
             }
         }
 
-        // Алгоритм поиска в ширину (BFS) для распространения света
         function calculateLight(startR, startC, maxRange, lightMap) {
-            // Очередь хранит координаты и текущее расстояние от лампы: [row, col, distance]
-            const queue = [[startR, startC, 0]];
-            
-            // Навещаем стартовую клетку
-            lightMap[startR][startC] = true;
+            if (maxRange <= 0) return;
 
-            // Метрика посещенных клеток именно для ЭТОЙ лампы (чтобы не зацикливаться)
+            const queue = [[startR, startC, 0]];
             const visited = Array(rows).fill(null).map(() => Array(cols).fill(false));
             visited[startR][startC] = true;
 
-            // Направления движения: вверх, вниз, влево, вправо
-            const directions = [
-                [-1, 0], [1, 0], [0, -1], [0, 1]
-            ];
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
             while (queue.length > 0) {
                 const [currR, currC, dist] = queue.shift();
 
-                // Если достигли лимита дальности лампы, дальше свет не идет
                 if (dist >= maxRange) continue;
 
                 for (const [dr, dc] of directions) {
                     const newR = currR + dr;
                     const newC = currC + dc;
 
-                    // Проверка границ сетки
+                    // ЖЕСТКАЯ ПРОВЕРКА: свет распространяется СТРОГО внутри индексов [0 ... rows-1] и [0 ... cols-1]
                     if (newR >= 0 && newR < rows && newC >= 0 && newC < cols) {
-                        // Нельзя ходить сквозь стены и по уже посещенным клеткам
                         if (!visited[newR][newC] && gridData[newR][newC] !== 'wall') {
                             visited[newR][newC] = true;
                             lightMap[newR][newC] = true;
@@ -339,16 +323,13 @@
             }
         }
 
-        // Слушатели событий управления
         btnGenerate.addEventListener('click', init);
-        
         btnClear.addEventListener('click', () => {
             gridData = Array(rows).fill(null).map(() => Array(cols).fill('empty'));
             lampRanges = {};
             updateVisuals();
         });
 
-        // Запуск при загрузке страницы
         init();
     </script>
 </body>
