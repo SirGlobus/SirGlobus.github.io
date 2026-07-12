@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Симулятор освещения сетки</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --primary-color: #3498db;
+            --wall-color: #2c3e50;
+            --lamp-color: #e74c3c;
+            --light-color: #f1c40f;
+            --empty-color: #ffffff;
+            --border-color: #e0e0e0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #7f8c8d;
+        }
+
+        input, select, button {
+            padding: 8px 12px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 10px;
+            background: #edf2f7;
+            padding: 5px;
+            border-radius: 6px;
+        }
+
+        .radio-group label {
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #4a5568;
+            transition: all 0.2s;
+        }
+
+        .radio-group input {
+            display: none;
+        }
+
+        .radio-group input:checked + label {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        #grid-container {
+            max-width: 90vw;
+            max-height: 70vh;
+            overflow: auto;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .grid {
+            display: grid;
+            gap: 1px;
+            background-color: var(--border-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .cell {
+            width: 30px;
+            height: 30px;
+            background-color: var(--empty-color);
+            cursor: pointer;
+            transition: background-color 0.1s ease;
+            user-select: none;
+        }
+
+        /* Стили для типов клеток */
+        .cell.wall {
+            background-color: var(--wall-color);
+        }
+
+        .cell.lamp {
+            background-color: var(--lamp-color);
+            position: relative;
+        }
+
+        /* Иконка лампочки внутри клетки */
+        .cell.lamp::after {
+            content: "💡";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+        }
+
+        .cell.light {
+            background-color: var(--light-color);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Симулятор освещения сетки</h1>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="grid-rows">Строк:</label>
+            <input type="number" id="grid-rows" value="15" min="5" max="50">
+        </div>
+        <div class="control-group">
+            <label for="grid-cols">Колонок:</label>
+            <input type="number" id="grid-cols" value="20" min="5" max="50">
+        </div>
+        <div class="control-group">
+            <label for="lamp-range">Размер (дальность) лампы:</label>
+            <input type="number" id="lamp-range" value="4" min="0" max="100">
+        </div>
+        
+        <div class="control-group">
+            <label>Режим клика:</label>
+            <div class="radio-group">
+                <input type="radio" id="mode-lamp" name="mode" value="lamp" checked>
+                <label for="mode-lamp">Лампа</label>
+                
+                <input type="radio" id="mode-wall" name="mode" value="wall">
+                <label for="mode-wall">Препятствие</label>
+
+                <input type="radio" id="mode-erase" name="mode" value="erase">
+                <label for="mode-erase">Стереть</label>
+            </div>
+        </div>
+
+        <button id="btn-generate">Обновить сетку</button>
+        <button id="btn-clear" style="background-color: #e74c3c;">Очистить всё</button>
+    </div>
+
+    <div id="grid-container">
+        <div id="grid" class="grid"></div>
+    </div>
+
+    <script>
+        // Состояние приложения
+        let rows = 15;
+        let cols = 20;
+        let gridData = []; // Матрица типов: 'empty', 'wall', 'lamp'
+        let lampRanges = {}; // Хранилище дальности для каждой лампы по ключу "r,c"
+
+        const gridElement = document.getElementById('grid');
+        const rowsInput = document.getElementById('grid-rows');
+        const colsInput = document.getElementById('grid-cols');
+        const rangeInput = document.getElementById('lamp-range');
+        const btnGenerate = document.getElementById('btn-generate');
+        const btnClear = document.getElementById('btn-clear');
+
+        // Инициализация
+        function init() {
+            rows = parseInt(rowsInput.value) || 15;
+            cols = parseInt(colsInput.value) || 20;
+            
+            gridData = Array(rows).fill(null).map(() => Array(cols).fill('empty'));
+            lampRanges = {};
+
+            renderGrid();
+        }
+
+        // Отрисовка сетки в DOM
+        function renderGrid() {
+            gridElement.innerHTML = '';
+            gridElement.style.gridTemplateRows = `repeat(${rows}, 30px)`;
+            gridElement.style.gridTemplateColumns = `repeat(${cols}, 30px)`;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    
+                    // Навешиваем событие клика
+                    cell.addEventListener('click', () => handleCellClick(r, c));
+                    
+                    gridElement.appendChild(cell);
+                }
+            }
+            updateVisuals();
+        }
+
+        // Обработка клика по клетке в зависимости от режима
+        function handleCellClick(r, c) {
+            const currentMode = document.querySelector('input[name="mode"]:checked').value;
+
+            if (currentMode === 'lamp') {
+                if (gridData[r][c] === 'empty') {
+                    gridData[r][c] = 'lamp';
+                    lampRanges[`${r},${c}`] = parseInt(rangeInput.value) || 0;
+                }
+            } else if (currentMode === 'wall') {
+                if (gridData[r][c] === 'empty') {
+                    gridData[r][c] = 'wall';
+                } else if (gridData[r][c] === 'wall') {
+                    gridData[r][c] = 'empty';
+                }
+            } else if (currentMode === 'erase') {
+                if (gridData[r][c] === 'lamp') {
+                    delete lampRanges[`${r},${c}`];
+                }
+                gridData[r][c] = 'empty';
+            }
+
+            updateVisuals();
+        }
+
+        // Обновление классов клеток (свет, стены, лампы)
+        function updateVisuals() {
+            // Создаем карту освещения (матрица true/false)
+            const lightMap = Array(rows).fill(null).map(() => Array(cols).fill(false));
+
+            // Для каждой лампы запускаем алгоритм поиска в ширину (BFS)
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (gridData[r][c] === 'lamp') {
+                        const range = lampRanges[`${r},${c}`] || 0;
+                        calculateLight(r, c, range, lightMap);
+                    }
+                }
+            }
+
+            // Синхронизируем массив данных с классами в DOM
+            const cells = gridElement.children;
+            for (let i = 0; i < cells.length; i++) {
+                const cell = cells[i];
+                const r = parseInt(cell.dataset.row);
+                const c = parseInt(cell.dataset.col);
+
+                // Сбрасываем старые классы
+                cell.className = 'cell';
+
+                if (gridData[r][c] === 'wall') {
+                    cell.classList.add('wall');
+                } else if (gridData[r][c] === 'lamp') {
+                    cell.classList.add('lamp');
+                } else if (lightMap[r][c]) {
+                    cell.classList.add('light');
+                }
+            }
+        }
+
+        // Алгоритм поиска в ширину (BFS) для распространения света
+        function calculateLight(startR, startC, maxRange, lightMap) {
+            // Очередь хранит координаты и текущее расстояние от лампы: [row, col, distance]
+            const queue = [[startR, startC, 0]];
+            
+            // Навещаем стартовую клетку
+            lightMap[startR][startC] = true;
+
+            // Метрика посещенных клеток именно для ЭТОЙ лампы (чтобы не зацикливаться)
+            const visited = Array(rows).fill(null).map(() => Array(cols).fill(false));
+            visited[startR][startC] = true;
+
+            // Направления движения: вверх, вниз, влево, вправо
+            const directions = [
+                [-1, 0], [1, 0], [0, -1], [0, 1]
+            ];
+
+            while (queue.length > 0) {
+                const [currR, currC, dist] = queue.shift();
+
+                // Если достигли лимита дальности лампы, дальше свет не идет
+                if (dist >= maxRange) continue;
+
+                for (const [dr, dc] of directions) {
+                    const newR = currR + dr;
+                    const newC = currC + dc;
+
+                    // Проверка границ сетки
+                    if (newR >= 0 && newR < rows && newC >= 0 && newC < cols) {
+                        // Нельзя ходить сквозь стены и по уже посещенным клеткам
+                        if (!visited[newR][newC] && gridData[newR][newC] !== 'wall') {
+                            visited[newR][newC] = true;
+                            lightMap[newR][newC] = true;
+                            queue.push([newR, newC, dist + 1]);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Слушатели событий управления
+        btnGenerate.addEventListener('click', init);
+        
+        btnClear.addEventListener('click', () => {
+            gridData = Array(rows).fill(null).map(() => Array(cols).fill('empty'));
+            lampRanges = {};
+            updateVisuals();
+        });
+
+        // Запуск при загрузке страницы
+        init();
+    </script>
+</body>
+</html>
